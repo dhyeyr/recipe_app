@@ -1,15 +1,11 @@
-import 'package:sqflite/sqflite.dart';
 
-import 'budgetmodel.dart';
+import 'package:sqflite/sqflite.dart';
+import 'add_recipe_model.dart';
+import 'dart:async';
 
 class DbHelper {
   static final DbHelper _obj = DbHelper._();
-
   DbHelper._();
-
-  final dbname = "budget2.db";
-  String user = "UserData";
-  String balance = "Balance";
 
   factory DbHelper() {
     return _obj;
@@ -17,62 +13,59 @@ class DbHelper {
 
   static DbHelper get instance => _obj;
 
-  Database? database;
+  final String dbname = "Recipe.db";
+  final String recipeTable = "Recipe";
+  Database? _database;
 
-  Future initDb() async {
-    database = await openDatabase(dbname, version: 4, onCreate: (db, version) {
-      db.execute('''CREATE TABLE "UserData" (
-          "password" TEXT NOT NULL,
-          "number" TEXT NOT NULL UNIQUE,
-          "id" INTEGER NOT NULL, 
-          PRIMARY KEY("id" AUTOINCREMENT))''');
+  final _recipeStreamController = StreamController<List<Recipe_Model>>.broadcast();
 
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await initDb();
+    _loadRecipes();
+    return _database!;
+  }
+
+  Future<Database> initDb() async {
+    return await openDatabase(dbname, version: 3, onCreate: (db, version) {
       db.execute('''
-      CREATE TABLE "Balance" (
-	"id"	INTEGER  NOT NULL,
-	"type"	TEXT NOT NULL,
-	"amount"	NUMERIC NOT NULL DEFAULT 0,
-	"date"	TEXT NOT NULL,
-	"name"	TEXT NOT NULL,
-	"note"	TEXT NOT NULL,
-		
-	"category"	TEXT NOT NULL,
-	PRIMARY KEY("id" AUTOINCREMENT)
-)
+      CREATE TABLE "$recipeTable" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" TEXT NOT NULL,
+        "description" TEXT NOT NULL,
+        "image" BLOB
+      )
       ''');
-    }, singleInstance: true);
+    });
   }
 
-  // Future insertUserData(UserModel userModel) async {
-  //   var database = await openDatabase(dbname);
-  //
-  //   database.insert(user, userModel.toJson()); // Removed extra comma
-  //   database.close();
-  // }
-
-  Future insertBudget(BudgetModel budgetModel) async {
-    var database = await openDatabase(dbname);
-    database.insert(balance, budgetModel.toJson());
-    database.close();
+  void _loadRecipes() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(recipeTable);
+    final recipes = List.generate(maps.length, (i) {
+      return Recipe_Model.fromJson(maps[i]);
+    });
+    _recipeStreamController.add(recipes);
   }
 
-  Future deleteUserData(int id) async {
-    if (database == null) await initDb();
-    database?.delete(user, where: "id=?", whereArgs: [id]);
-    database?.close();
+  Stream<List<Recipe_Model>> getRecipesStream() {
+    return _recipeStreamController.stream;
   }
 
-  Future<List<Map<String, Object?>>?> getUser(
-      String number, String password) async {
-    return database?.rawQuery(
-      "select * from UserData where number=$number and password=$password",
-      // [number, password]
-    );
+  Future<void> insertRecipe(Recipe_Model recipe) async {
+    final db = await database;
+    await db.insert(recipeTable, recipe.toJson());
+    _loadRecipes();
   }
 
-  Future<List<Map<String, Object?>>?> getBalance({bool income = false}) async {
-    var database = await openDatabase(dbname);
-    var type = income ? 'Income' : 'Expanse';
-    return await database.rawQuery("select * from Balance where type='$type'");
+  Future<void> updateRecipe(Recipe_Model recipe) async {
+    await DbHelper.instance.updateRecipe(recipe);
+    _loadRecipes();
+  }
+
+  Future<void> deleteUserData(int id) async {
+    final db = await database;
+    await db.delete(recipeTable, where: "id=?", whereArgs: [id]);
+    _loadRecipes();
   }
 }
