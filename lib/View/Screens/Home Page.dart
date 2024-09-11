@@ -2,13 +2,11 @@ import 'package:recipe_app/Model/add_recipe_model.dart';
 import 'package:recipe_app/Model/db_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'LikedRecipePage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:recipe_app/Model/fs_model.dart';
+import 'package:recipe_app/View/Screens/LikedRecipePage.dart';
 import '../../Controller/recipecontroller.dart';
-import '../../Model/fs_model.dart';
+
 
 class Home_Screen extends StatefulWidget {
   const Home_Screen({super.key});
@@ -125,7 +123,7 @@ class _Home_ScreenState extends State<Home_Screen> {
     Get.dialog(
       AlertDialog(
         backgroundColor: Colors.white54,
-        title: const Text("Add Product"),
+        title: const Text("Add Recipe"),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.max,
